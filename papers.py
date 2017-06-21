@@ -1,9 +1,12 @@
-import os, pathlib
+import os
+import pathlib
 
 papers_path = "./papers"
 
+
 class Papers (dict):
     papers = {}
+
     def __init__(self):
         self.path = pathlib.Path(papers_path)
         self.load_papers()
@@ -20,11 +23,11 @@ class Papers (dict):
         p = Paper()
         p.name = name
         pth = pathlib.Path(papers_path) / pathlib.Path(name)
-        pth.touch() 
+        pth.touch()
         self[name] = p
 
     def rename_paper(self, name, rename):
-        p = self[name] 
+        p = self[name]
         pth = pathlib.Path(papers_path) / pathlib.Path(name)
         new_pth = pathlib.Path(papers_path) / pathlib.Path(rename)
         pth.rename(new_pth)
@@ -42,6 +45,7 @@ class Papers (dict):
     def paper_exists(self, name):
         p = pathlib.Path(papers_path) / pathlib.Path(name)
         return p.exists()
+
 
 class Paper:
     text = ""

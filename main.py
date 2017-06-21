@@ -1,28 +1,29 @@
 from papers import Papers
 
 import sys
-from PyQt5 import QtCore
+# from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QIcon, QKeySequence, QTextCursor, QColor
+
 
 class PaperEditor(QTextEdit):
     def __init__(self):
         super().__init__()
         self.dirty = False
         # self.textChanged.connect(self.setDirty)
-    
+
     def setDirty(self, status=True):
         self.dirty = status
 
+
 class PaperWindow(QMainWindow):
-    
+
     def __init__(self):
         super().__init__()
-        
+
         self.initUI()
-        
-        
-    def initUI(self): 
+
+    def initUI(self):
         self.main_widget = QWidget()
         self.vbox = QVBoxLayout()
 
@@ -42,7 +43,6 @@ class PaperWindow(QMainWindow):
 
         quit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
         quit_shortcut.activated.connect(self.quit)
-        
 
         self.papers = Papers()
 
@@ -56,7 +56,7 @@ class PaperWindow(QMainWindow):
             editor.setText(self.papers[i].text)
             editor.textChanged.connect(self.set_dirty)
             self.tab_bar.addTab(editor, i)
-        
+
         self.tabButton = QToolButton(self)
         self.tabButton.setText('+')
         font = self.tabButton.font()
@@ -72,16 +72,15 @@ class PaperWindow(QMainWindow):
                     background-color: #cccccc;
                     border-color: #9B9B9B;
                     border: 1px solid #C4C4C3;
-                    border-bottom-color: #C2C7CB; 
+                    border-bottom-color: #C2C7CB;
                 }
                 QTabBar::tab:selected {
                     background-color: #eeeeee;
                     border-color: #9B9B9B;
-                    border-bottom-color: #C2C7CB; 
+                    border-bottom-color: #C2C7CB;
                 }
-                
+
                 """)
-        # self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.CustomizeWindowHint)
         self.show()
 
         current = self.tab_bar.currentWidget()
@@ -92,7 +91,9 @@ class PaperWindow(QMainWindow):
         sys.exit()
 
     def add_paper(self):
-        name, okPressed = QInputDialog.getText(self, "New Paper","Paper name:", QLineEdit.Normal, "")
+        name, okPressed = QInputDialog.getText(self, "New Paper",
+                                               "Paper name:", QLineEdit.Normal,
+                                               "")
         if okPressed and name != '':
             if not self.papers.paper_exists(name):
                 editor = PaperEditor()
@@ -100,7 +101,7 @@ class PaperWindow(QMainWindow):
                 index = self.tab_bar.addTab(editor, name)
                 self.tab_bar.setCurrentIndex(index)
             else:
-                reply = QMessageBox.information(self, name, "Paper already exists.")
+                QMessageBox.information(self, name, "Paper already exists.")
 
     def delete_paper_active(self):
         index = self.tab_bar.currentIndex()
@@ -108,8 +109,10 @@ class PaperWindow(QMainWindow):
 
     def delete_paper(self, index):
         name = self.tab_bar.tabText(index)
-        reply = QMessageBox.question(self, "Delete Paper","Are you sure to delete paper " + name, QMessageBox.Yes | 
-                                     QMessageBox.No, QMessageBox.No)
+        reply = QMessageBox.question(self, "Delete Paper",
+                                     "Are you sure to delete paper " + name,
+                                     QMessageBox.Yes | QMessageBox.No,
+                                     QMessageBox.No)
         if reply == QMessageBox.Yes:
             self.papers.delete_paper(name)
             self.tab_bar.removeTab(index)
@@ -121,7 +124,7 @@ class PaperWindow(QMainWindow):
         self.papers[name].text = textbox.toPlainText()
         self.papers.save_paper(name)
         self.set_dirty(False)
-    
+
     def set_dirty(self, status=True):
         textbox = self.tab_bar.currentWidget()
         textbox.setDirty(status)
@@ -133,16 +136,19 @@ class PaperWindow(QMainWindow):
 
     def rename_paper(self, index):
         name = self.tab_bar.tabText(index)
-        rename, okPressed = QInputDialog.getText(self, "Rename Paper","Paper name:", QLineEdit.Normal, "")
+        rename, okPressed = QInputDialog.getText(self, "Rename Paper",
+                                                 "Paper name:",
+                                                 QLineEdit.Normal, "")
         if okPressed and rename != '':
             if not self.papers.paper_exists(rename):
                 self.papers.rename_paper(name, rename)
                 self.tab_bar.setTabText(index, rename)
             else:
-                reply = QMessageBox.information(self, rename, "Paper already exists.")
+                QMessageBox.information(self, rename, "Paper already exists.")
+
 
 if __name__ == '__main__':
-    
+
     app = QApplication(sys.argv)
     p = PaperWindow()
     sys.exit(app.exec_())
