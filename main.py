@@ -1,9 +1,10 @@
-from papers import Papers
-
 import sys
 # from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QIcon, QKeySequence, QTextCursor, QColor
+
+from papers import Papers
+from config import PaperConfig
 
 
 class PaperEditor(QTextEdit):
@@ -21,14 +22,17 @@ class PaperWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.config = PaperConfig()
         self.initUI()
 
     def initUI(self):
         self.main_widget = QWidget()
         self.vbox = QVBoxLayout()
 
-        self.resize(550, 350)
-        self.move(300, 300)
+        self.resize(self.config['Paper'].getint('Width'),
+                    self.config['Paper'].getint('Height'))
+        self.move(self.config['Paper'].getint('WindowX'),
+                  self.config['Paper'].getint('WindowY'))
         self.setWindowTitle('Paper')
         self.setWindowIcon(QIcon('paper.png'))
 
@@ -42,9 +46,9 @@ class PaperWindow(QMainWindow):
         delete_shortcut.activated.connect(self.delete_paper_active)
 
         quit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
-        quit_shortcut.activated.connect(self.quit)
+        quit_shortcut.activated.connect(self.close)
 
-        self.papers = Papers()
+        self.papers = Papers(self.config['Paper']['PapersPath'])
 
         self.tab_bar = QTabWidget()
         self.tab_bar.setTabsClosable(True)
@@ -87,8 +91,17 @@ class PaperWindow(QMainWindow):
         current.setFocus()
         current.moveCursor(QTextCursor.End)
 
-    def quit(self):
-        sys.exit()
+    def closeEvent(self, event):
+        self.config['Paper']['Width'] = str(self.width())
+        self.config['Paper']['Height'] = str(self.height())
+        self.config['Paper']['WindowX'] = str(self.pos().x())
+        self.config['Paper']['WindowY'] = str(self.pos().y())
+        self.config.SaveConfig()
+        event.accept()
+
+    # def quit(self):
+    #     self.config.SaveConfig()
+    #     sys.exit()
 
     def add_paper(self):
         name, okPressed = QInputDialog.getText(self, "New Paper",
