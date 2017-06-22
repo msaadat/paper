@@ -43,6 +43,9 @@ class PaperWindow(QMainWindow):
         delete_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
         delete_shortcut.activated.connect(self.delete_paper_active)
 
+        eval_shortcut = QShortcut(QKeySequence("Ctrl+E"), self)
+        eval_shortcut.activated.connect(self.evalText)
+
         quit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
         quit_shortcut.activated.connect(self.close)
 
@@ -101,6 +104,16 @@ class PaperWindow(QMainWindow):
             cursor = self.tab_bar.currentWidget().textCursor()
             cursor.setPosition(last_pos)
             self.tab_bar.currentWidget().setTextCursor(cursor)
+
+    def evalText(self):
+        editor = self.tab_bar.currentWidget()
+        cursor = editor.textCursor()
+        if cursor.hasSelection():
+            text = cursor.selectedText()
+            result = eval(text)
+            cursor.removeSelectedText()
+            cursor.insertText(str(result))
+        editor.setTextCursor(cursor)
 
     def closeEvent(self, event):
         pos = self.tab_bar.currentWidget().textCursor().position()
