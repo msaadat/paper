@@ -1,5 +1,4 @@
 import sys
-# from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QIcon, QKeySequence, QTextCursor, QColor
 
@@ -11,7 +10,6 @@ class PaperEditor(QTextEdit):
     def __init__(self):
         super().__init__()
         self.dirty = False
-        # self.textChanged.connect(self.setDirty)
 
     def setDirty(self, status=True):
         self.dirty = status
@@ -87,21 +85,36 @@ class PaperWindow(QMainWindow):
                 """)
         self.show()
 
+        # activate last used paper
+        if "LastPaper" in self.config['Paper']:
+            last_paper = self.config['Paper']['LastPaper']
+            for i in range(0, self.tab_bar.count()):
+                if self.tab_bar.tabText(i) == last_paper:
+                    self.tab_bar.setCurrentIndex(i)
+                    break
+
         current = self.tab_bar.currentWidget()
         current.setFocus()
-        current.moveCursor(QTextCursor.End)
+
+        if "LastCursorPos" in self.config['Paper']:
+            last_pos = self.config['Paper'].getint('LastCursorPos')
+            cursor = self.tab_bar.currentWidget().textCursor()
+            cursor.setPosition(last_pos)
+            self.tab_bar.currentWidget().setTextCursor(cursor)
 
     def closeEvent(self, event):
+        pos = self.tab_bar.currentWidget().textCursor().position()
+        self.config['Paper']['LastCursorPos'] = str(pos)
+        self.config['Paper']['LastPaper'] = self.tab_bar.tabText(self.tab_bar.currentIndex())
+
+        # save position
         self.config['Paper']['Width'] = str(self.width())
         self.config['Paper']['Height'] = str(self.height())
         self.config['Paper']['WindowX'] = str(self.pos().x())
         self.config['Paper']['WindowY'] = str(self.pos().y())
+
         self.config.SaveConfig()
         event.accept()
-
-    # def quit(self):
-    #     self.config.SaveConfig()
-    #     sys.exit()
 
     def add_paper(self):
         name, okPressed = QInputDialog.getText(self, "New Paper",
