@@ -7,9 +7,16 @@ from config import PaperConfig
 
 
 class PaperEditor(QTextEdit):
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
         self.dirty = False
+        if "FontFamily" in config['Paper']:
+            font = config['Paper']['FontFamily']
+            self.setFontFamily(font)
+
+        if "FontSize" in config['Paper']:
+            size = config['Paper']['FontSize']
+            self.setFontPointSize(int(size))
 
     def setDirty(self, status=True):
         self.dirty = status
@@ -57,7 +64,7 @@ class PaperWindow(QMainWindow):
         self.tab_bar.tabBarDoubleClicked.connect(self.rename_paper)
 
         for i in self.papers:
-            editor = PaperEditor()
+            editor = PaperEditor(self.config)
             editor.setText(self.papers[i].text)
             editor.textChanged.connect(self.set_dirty)
             self.tab_bar.addTab(editor, i)
