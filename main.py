@@ -1,9 +1,12 @@
 import sys
+
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QIcon, QKeySequence, QTextCursor, QColor
 
+
 from papers import Papers
 from config import PaperConfig
+from password_dlg import PasswordDialog
 
 
 class PaperEditor(QTextEdit):
@@ -28,7 +31,12 @@ class PaperWindow(QMainWindow):
         super().__init__()
 
         self.config = PaperConfig()
+        self.papers = Papers(self.config['Paper']['PapersPath'])
+
         self.initUI()
+
+        self.getPassword()
+        self.loadPapers()
 
     def initUI(self):
         self.main_widget = QWidget()
@@ -56,18 +64,10 @@ class PaperWindow(QMainWindow):
         quit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
         quit_shortcut.activated.connect(self.close)
 
-        self.papers = Papers(self.config['Paper']['PapersPath'])
-
         self.tab_bar = QTabWidget()
         self.tab_bar.setTabsClosable(True)
         self.tab_bar.tabCloseRequested.connect(self.delete_paper)
         self.tab_bar.tabBarDoubleClicked.connect(self.rename_paper)
-
-        for i in self.papers:
-            editor = PaperEditor(self.config)
-            editor.setText(self.papers[i].text)
-            editor.textChanged.connect(self.set_dirty)
-            self.tab_bar.addTab(editor, i)
 
         self.tabButton = QToolButton(self)
         self.tabButton.setText('+')
@@ -95,6 +95,27 @@ class PaperWindow(QMainWindow):
                 """)
         self.show()
 
+    def loadPapers(self):
+        while True:
+            try:
+                self.papers.load_papers()
+                break
+            except ValueError as e:
+                QMessageBox.warning(self, "Error",
+                                    e.args[0])
+                self.getPassword()
+                continue
+
+        if not self.papers:
+            self.papers.add_paper("note")
+            self.papers["note"].text = "##My note"
+
+        for i in self.papers:
+            editor = PaperEditor(self.config)
+            editor.setText(self.papers[i].text)
+            editor.textChanged.connect(self.set_dirty)
+            self.tab_bar.addTab(editor, i)
+
         # activate last used paper
         if "LastPaper" in self.config['Paper']:
             last_paper = self.config['Paper']['LastPaper']
@@ -112,6 +133,18 @@ class PaperWindow(QMainWindow):
             cursor.setPosition(last_pos)
             self.tab_bar.currentWidget().setTextCursor(cursor)
 
+    def getPassword(self):
+        if self.papers.salt is None:
+            pwd, response = PasswordDialog.getPassword(self)
+        else:
+            pwd, response = QInputDialog.getText(self, "Password",
+                                                  "Input pasword:",
+                                                  QLineEdit.Password, "")
+        if response == QDialog.Accepted and pwd!='':
+            self.papers.setPassword(pwd)
+        else:
+            self.close()
+
     def evalText(self):
         editor = self.tab_bar.currentWidget()
         cursor = editor.textCursor()
@@ -123,9 +156,11 @@ class PaperWindow(QMainWindow):
         editor.setTextCursor(cursor)
 
     def closeEvent(self, event):
-        pos = self.tab_bar.currentWidget().textCursor().position()
-        self.config['Paper']['LastCursorPos'] = str(pos)
-        self.config['Paper']['LastPaper'] = self.tab_bar.tabText(self.tab_bar.currentIndex())
+        widget = self.tab_bar.currentWidget()
+        if widget is not None:
+            pos = self.tab_bar.currentWidget().textCursor().position()
+            self.config['Paper']['LastCursorPos'] = str(pos)
+            self.config['Paper']['LastPaper'] = self.tab_bar.tabText(self.tab_bar.currentIndex())
 
         # save position
         self.config['Paper']['Width'] = str(self.width())
@@ -135,6 +170,7 @@ class PaperWindow(QMainWindow):
 
         self.config.SaveConfig()
         event.accept()
+        sys.exit()
 
     def add_paper(self):
         name, okPressed = QInputDialog.getText(self, "New Paper",
@@ -142,7 +178,7 @@ class PaperWindow(QMainWindow):
                                                "")
         if okPressed and name != '':
             if not self.papers.paper_exists(name):
-                editor = PaperEditor()
+                editor = PaperEditor(self.config)
                 self.papers.add_paper(name)
                 index = self.tab_bar.addTab(editor, name)
                 self.tab_bar.setCurrentIndex(index)
