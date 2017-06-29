@@ -53,7 +53,7 @@ class PaperWindow(QMainWindow):
         save_shortcut.activated.connect(self.save_paper)
 
         new_shortcut = QShortcut(QKeySequence("Ctrl+N"), self)
-        new_shortcut.activated.connect(self.add_paper)
+        new_shortcut.activated.connect(self.add_paper_handler)
 
         delete_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
         delete_shortcut.activated.connect(self.delete_paper_active)
@@ -75,7 +75,7 @@ class PaperWindow(QMainWindow):
         font.setBold(True)
         self.tabButton.setFont(font)
         self.tab_bar.setCornerWidget(self.tabButton)
-        self.tabButton.clicked.connect(self.add_paper)
+        self.tabButton.clicked.connect(self.add_paper_handler)
 
         self.setCentralWidget(self.tab_bar)
         self.setStyleSheet("""
@@ -111,10 +111,7 @@ class PaperWindow(QMainWindow):
             self.papers["note"].text = "##My note"
 
         for i in self.papers:
-            editor = PaperEditor(self.config)
-            editor.setText(self.papers[i].text)
-            editor.textChanged.connect(self.set_dirty)
-            self.tab_bar.addTab(editor, i)
+            self.add_paper(self.papers[i].name)
 
         # activate last used paper
         if "LastPaper" in self.config['Paper']:
@@ -177,18 +174,23 @@ class PaperWindow(QMainWindow):
         event.accept()
         sys.exit()
 
-    def add_paper(self):
+    def add_paper_handler(self):
         name, okPressed = QInputDialog.getText(self, "New Paper",
                                                "Paper name:", QLineEdit.Normal,
                                                "")
         if okPressed and name != '':
             if not self.papers.paper_exists(name):
-                editor = PaperEditor(self.config)
                 self.papers.add_paper(name)
-                index = self.tab_bar.addTab(editor, name)
-                self.tab_bar.setCurrentIndex(index)
+                self.add_paper(name)
             else:
                 QMessageBox.information(self, name, "Paper already exists.")
+
+    def add_paper(self, name):
+        editor = PaperEditor(self.config)
+        editor.setText(self.papers[name].text)
+        index = self.tab_bar.addTab(editor, name)
+        self.tab_bar.setCurrentIndex(index)
+        editor.textChanged.connect(self.set_dirty)
 
     def delete_paper_active(self):
         index = self.tab_bar.currentIndex()
