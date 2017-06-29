@@ -148,11 +148,16 @@ class PaperWindow(QMainWindow):
     def evalText(self):
         editor = self.tab_bar.currentWidget()
         cursor = editor.textCursor()
+        result = None
         if cursor.hasSelection():
             text = cursor.selectedText()
-            result = eval(text)
-            cursor.removeSelectedText()
-            cursor.insertText(str(result))
+            try:
+                result = eval(text)
+            except:
+                pass
+            if result is not None:
+                cursor.removeSelectedText()
+                cursor.insertText(str(result))
         editor.setTextCursor(cursor)
 
     def closeEvent(self, event):
