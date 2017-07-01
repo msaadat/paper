@@ -28,8 +28,9 @@ class PaperEditor(QTextEdit):
         cursor = self.textCursor()
         selection = cursor.selectedText()
         indent = event.key() == Qt.Key_Tab
+        modifiers = event.modifiers()
 
-        if selection != '':
+        if (selection != '') and (modifiers != Qt.ControlModifier):
             linesep = '\u2029'    # qt line ending
             lines = selection.split(linesep)
 
