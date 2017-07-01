@@ -19,16 +19,15 @@ class PaperEditor(QTextEdit):
         self.dirty = status
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Tab:
-            self.indentSelection()
-        elif event.key() == Qt.Key_Backtab:
-            self.indentSelection(False)
+        if event.key() == Qt.Key_Tab or event.key() == Qt.Key_Backtab:
+            self.handle_indentSelection(event)
         else:
             super().keyPressEvent(event)
 
-    def indentSelection(self, indent=True):
+    def handle_indentSelection(self, event):
         cursor = self.textCursor()
         selection = cursor.selectedText()
+        indent = event.key() == Qt.Key_Tab
 
         if selection != '':
             linesep = '\u2029'    # qt line ending
@@ -43,3 +42,5 @@ class PaperEditor(QTextEdit):
             pos = cursor.position()
             cursor.setPosition(pos - len(newtext), QTextCursor.KeepAnchor)
             self.setTextCursor(cursor)
+        else:
+            super().keyPressEvent(event)
