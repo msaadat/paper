@@ -54,12 +54,28 @@ class PaperWindow(QMainWindow):
         self.tab_bar.tabBarDoubleClicked.connect(self.rename_paper)
 
         self.tabButton = QToolButton(self)
-        self.tabButton.setText('+')
+        self.tabButton.setText('➕')
         font = self.tabButton.font()
-        font.setBold(True)
+        font.setPointSize(font.pointSize() + 1)
         self.tabButton.setFont(font)
-        self.tab_bar.setCornerWidget(self.tabButton)
+        self.tabButton.setAutoRaise(True)
         self.tabButton.clicked.connect(self.add_paper_handler)
+
+        self.menuBtn = QToolButton(self)
+        self.menuBtn.setText('☰')
+        font = self.menuBtn.font()
+        font.setPointSize(font.pointSize() + 3)
+        font.setBold(True)
+        self.menuBtn.setFont(font)
+
+        self.hboxCorner = QHBoxLayout()
+        self.hboxCorner.addWidget(self.tabButton)
+        # self.hboxCorner.addWidget(self.menuBtn)
+        self.hboxCorner.setContentsMargins(0,0,0,0)
+        self.hboxContainer = QWidget()
+        self.hboxContainer.setLayout(self.hboxCorner)
+
+        self.tab_bar.setCornerWidget(self.hboxContainer)
 
         self.setCentralWidget(self.tab_bar)
         self.setStyleSheet("""
