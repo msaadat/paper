@@ -1,28 +1,12 @@
 import sys
 
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QIcon, QKeySequence, QTextCursor, QColor
-
+from PyQt5.QtGui import QIcon, QKeySequence, QColor
 
 from papers import Papers
 from config import PaperConfig
+from paper_editor import PaperEditor
 from password_dlg import PasswordDialog
-
-
-class PaperEditor(QTextEdit):
-    def __init__(self, config):
-        super().__init__()
-        self.dirty = False
-        if "FontFamily" in config['Paper']:
-            font = config['Paper']['FontFamily']
-            self.setFontFamily(font)
-
-        if "FontSize" in config['Paper']:
-            size = config['Paper']['FontSize']
-            self.setFontPointSize(int(size))
-
-    def setDirty(self, status=True):
-        self.dirty = status
 
 
 class PaperWindow(QMainWindow):
@@ -137,7 +121,7 @@ class PaperWindow(QMainWindow):
             pwd, response = QInputDialog.getText(self, "Password",
                                                   "Input pasword:",
                                                   QLineEdit.Password, "")
-        if response == QDialog.Accepted and pwd!='':
+        if response == QDialog.Accepted and pwd != '':
             self.papers.setPassword(pwd)
         else:
             self.close()
@@ -158,6 +142,28 @@ class PaperWindow(QMainWindow):
         editor.setTextCursor(cursor)
 
     def closeEvent(self, event):
+        # check for unsaved papers
+        unsaved = []
+        for i in range(self.tab_bar.count()):
+            editor = self.tab_bar.widget(i)
+            name = self.tab_bar.tabText(i)
+            if editor.dirty:
+                unsaved.append((name, editor))
+
+        if unsaved:
+            reply = QMessageBox.question(self, "Unsaved Papers",
+                                         "Papers contain unsaved changes. Save all before exiting?",
+                                         QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+                                         QMessageBox.Cancel)
+            if reply == QMessageBox.Yes:
+                for i, j in unsaved:
+                    self.papers[i].text = j.toPlainText()
+                    self.papers.save_paper(i)
+            if reply == QMessageBox.Cancel:
+                event.ignore()
+                return
+
+        # save last paper & cursor pos
         widget = self.tab_bar.currentWidget()
         if widget is not None:
             pos = self.tab_bar.currentWidget().textCursor().position()
@@ -212,6 +218,7 @@ class PaperWindow(QMainWindow):
         name = self.tab_bar.tabText(index)
         self.papers[name].text = textbox.toPlainText()
         self.papers.save_paper(name)
+        textbox.setDirty(False)
         self.set_dirty(False)
 
     def set_dirty(self, status=True):
