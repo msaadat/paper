@@ -14,14 +14,15 @@ class Papers (dict):
     def __init__(self, papers_path):
         super().__init__()
         self.path = Path(papers_path)
+        self.salt_path = self.path / Path('salt')
         self.initPath()
-        self.getSalt()
 
     def initPath(self):
         if not self.path.exists():
             self.path.mkdir()
 
     def setPassword(self, pwd):
+        self.getSalt()
         kdf = PBKDF2HMAC(algorithm=hashes.SHA256(),
                          length=32,
                          salt=self.salt,
@@ -31,13 +32,12 @@ class Papers (dict):
         self.fernet = Fernet(self.key)
 
     def getSalt(self):
-        pth = self.path / Path('salt')
-        if pth.exists():
-            self.salt = pth.read_bytes()
+        if self.salt_path.exists():
+            self.salt = base64.urlsafe_b64decode(self.salt_path.read_bytes())
         else:
             self.salt = os.urandom(16)
             salt64 = base64.urlsafe_b64encode(self.salt)
-            pth.write_bytes(salt64)
+            self.salt_path.write_bytes(salt64)
 
     def load_papers(self):
         files = [x for x in self.path.glob("*") if x.is_file()]

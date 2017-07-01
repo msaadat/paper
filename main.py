@@ -131,7 +131,7 @@ class PaperWindow(QMainWindow):
             self.tab_bar.currentWidget().setTextCursor(cursor)
 
     def getPassword(self):
-        if self.papers.salt is None:
+        if not self.papers.salt_path.exists():
             pwd, response = PasswordDialog.getPassword(self)
         else:
             pwd, response = QInputDialog.getText(self, "Password",
