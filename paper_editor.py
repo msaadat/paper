@@ -1,3 +1,5 @@
+import re
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtWidgets import QTextEdit
@@ -21,6 +23,8 @@ class PaperEditor(QTextEdit):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Tab or event.key() == Qt.Key_Backtab:
             self.handle_indentSelection(event)
+        if event.key() == Qt.Key_Return:
+            self.handle_Return(event)
         else:
             super().keyPressEvent(event)
 
@@ -43,5 +47,26 @@ class PaperEditor(QTextEdit):
             pos = cursor.position()
             cursor.setPosition(pos - len(newtext), QTextCursor.KeepAnchor)
             self.setTextCursor(cursor)
+        else:
+            super().keyPressEvent(event)
+
+    def handle_Return(self, event):
+        cursor = self.textCursor()
+        pos = cursor.position()
+        cursor.movePosition(QTextCursor.StartOfLine, QTextCursor.KeepAnchor)
+        line = cursor.selectedText()
+
+        # delete empty list
+        m = re.match("^\\s*[+\\-\\*]\\s*$", line)
+        if m:
+            cursor.removeSelectedText()
+            return
+
+        # continue list
+        m = re.match("^(\\s*)([+\\-\\*])(\\s?)", line)
+        if m:
+            mstr = '\n' + line[m.start():m.end()]
+            cursor.setPosition(pos)
+            cursor.insertText(mstr)
         else:
             super().keyPressEvent(event)
