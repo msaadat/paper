@@ -31,7 +31,7 @@ class MarkdownHighlighter(QSyntaxHighlighter):
 
     def highlightBlock(self, text):
         for pattern, frmt in self.highlightingRules:
-            m = re.match(pattern, text)
+            m = re.search(pattern, text)
             if m:
                 self.setFormat(m.start(), m.end(), frmt)
 
