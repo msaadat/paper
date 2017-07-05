@@ -1,7 +1,8 @@
 import sys
 
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QIcon, QKeySequence, QColor
+from PyQt5.QtCore import QEvent
+from PyQt5.QtGui import QIcon, QKeySequence, QColor, QFont
 
 from papers import Papers
 from config import PaperConfig
@@ -21,6 +22,7 @@ class PaperWindow(QMainWindow):
 
         self.getPassword()
         self.loadPapers()
+        self.setFont()
 
     def initUI(self):
         self.main_widget = QWidget()
@@ -66,15 +68,25 @@ class PaperWindow(QMainWindow):
 
         self.menuBtn = QToolButton(self.hboxContainer)
         self.menuBtn.setText('☰')
+        self.menuBtn.setAutoRaise(True)
         font = self.menuBtn.font()
         font.setPointSize(font.pointSize() + 3)
         font.setBold(True)
         self.menuBtn.setFont(font)
 
+        font_action = QAction("Font...", self)
+        font_action.triggered.connect(self.getFont)
+
+        self.menuBtnmenu = QMenu(self.menuBtn)
+        self.menuBtnmenu.installEventFilter(self)
+
+        self.menuBtnmenu.addAction(font_action)
+        self.menuBtn.setMenu(self.menuBtnmenu)
+        self.menuBtn.setPopupMode(QToolButton.InstantPopup)
+
         self.hboxCorner.addWidget(self.tabButton)
         self.hboxCorner.addWidget(self.menuBtn)
-        self.menuBtn.hide()
-        self.hboxCorner.setContentsMargins(0,0,0,0)
+        self.hboxCorner.setContentsMargins(0, 0, 0, 0)
         self.hboxContainer.setLayout(self.hboxCorner)
 
         self.tab_bar.setCornerWidget(self.hboxContainer)
@@ -94,8 +106,40 @@ class PaperWindow(QMainWindow):
                     border-bottom-color: #C2C7CB;
                 }
 
+                QToolButton::menu-indicator { image: none; }
                 """)
+
         self.show()
+
+    def getFont(self, event):
+        prevfont = QFont()
+        if "Font" in self.config['Paper']:
+            prevfont.fromString(self.config['Paper']['Font'])
+
+        font, ok = QFontDialog.getFont(prevfont, self)
+        if ok:
+            self.setFont(font)
+
+    def setFont(self, font=None):
+        if font is None:
+            if "Font" in self.config['Paper']:
+                font = QFont()
+                font.fromString(self.config['Paper']['Font'])
+
+        if font is not None:
+            self.config['Paper']['Font'] = font.toString()
+            for i in range(self.tab_bar.count()):
+                editor = self.tab_bar.widget(i)
+                editor.setFont(font)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Show and obj == self.menuBtnmenu:
+            # show menu to the right instead of left
+            pos = obj.pos()
+            geo = self.menuBtn.geometry()
+            obj.move(pos.x() + geo.width() - obj.geometry().width(), pos.y())
+            return True
+        return False
 
     def loadPapers(self):
         while True:
@@ -210,7 +254,7 @@ class PaperWindow(QMainWindow):
                 QMessageBox.information(self, name, "Paper already exists.")
 
     def add_paper(self, name):
-        editor = PaperEditor(self.config)
+        editor = PaperEditor()
         editor.setText(self.papers[name].text)
         index = self.tab_bar.addTab(editor, name)
         self.tab_bar.setCurrentIndex(index)

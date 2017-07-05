@@ -6,13 +6,15 @@ from PyQt5.QtWidgets import QTextEdit
 
 
 class MarkdownHighlighter(QSyntaxHighlighter):
+
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.initRules()
 
+    def initRules(self):
         self.highlightingRules = []
-
         headingFormat = QTextCharFormat()
-        defaultSize = parent.defaultFont().pointSize()
+        defaultSize = self.parent().defaultFont().pointSize()
         headingFormat.setFontPointSize(defaultSize * 1.3)
         headingFormat.setFontWeight(QFont.Bold)
         self.highlightingRules.append(("^(#+)\\s*(.+?)$", headingFormat))
@@ -28,6 +30,7 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         strikeFormat = QTextCharFormat()
         strikeFormat.setFontStrikeOut(True)
         self.highlightingRules.append(("\B\~{2}(.+?)\~{2}\B", strikeFormat))
+        self.rehighlight()
 
     def highlightBlock(self, text):
         for pattern, frmt in self.highlightingRules:
@@ -37,19 +40,19 @@ class MarkdownHighlighter(QSyntaxHighlighter):
 
 
 class PaperEditor(QTextEdit):
-    def __init__(self, config):
+    def __init__(self):
         super().__init__()
         self.dirty = False
-        if "FontFamily" in config['Paper']:
-            font = config['Paper']['FontFamily']
-            self.setFontFamily(font)
-
-        if "FontSize" in config['Paper']:
-            size = config['Paper']['FontSize']
-            self.setFontPointSize(int(size))
-
-        self.document().setDefaultFont(self.currentFont())
         self.highlighter = MarkdownHighlighter(self.document())
+
+    def setFont(self, font):
+        self.setCurrentFont(font)
+        self.document().setDefaultFont(self.currentFont())
+
+        # block signals as highlighter somehow sends textChanged signal
+        self.blockSignals(True)
+        self.highlighter.initRules()
+        self.blockSignals(False)
 
     def setDirty(self, status=True):
         self.dirty = status
