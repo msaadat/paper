@@ -42,6 +42,7 @@ class MarkdownHighlighter(QSyntaxHighlighter):
 class PaperEditor(QTextEdit):
     def __init__(self):
         super().__init__()
+        self.setAcceptRichText(False)
         self.dirty = False
         self.highlighter = MarkdownHighlighter(self.document())
 
