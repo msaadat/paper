@@ -1,4 +1,5 @@
 import sys
+import os
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import QEvent
@@ -32,8 +33,15 @@ class PaperWindow(QMainWindow):
                     self.config['Paper'].getint('Height'))
         self.move(self.config['Paper'].getint('WindowX'),
                   self.config['Paper'].getint('WindowY'))
+
         self.setWindowTitle('Paper')
         self.setWindowIcon(QIcon('paper.png'))
+
+        # hack to set correct icon in windows taskbar
+        if os.name == 'nt':
+            import ctypes
+            myappid = 'msaadat.paper'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
         save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         save_shortcut.activated.connect(self.save_paper)
