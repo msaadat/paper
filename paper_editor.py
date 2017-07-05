@@ -60,7 +60,7 @@ class PaperEditor(QTextEdit):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Tab or event.key() == Qt.Key_Backtab:
             self.handle_indentSelection(event)
-        if event.key() == Qt.Key_Return:
+        elif event.key() == Qt.Key_Return:
             self.handle_Return(event)
         else:
             super().keyPressEvent(event)
