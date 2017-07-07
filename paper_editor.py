@@ -70,27 +70,30 @@ class PaperEditor(QTextEdit):
             super().keyPressEvent(event)
 
     def handle_indentSelection(self, event):
-        cursor = self.textCursor()
-        selection = cursor.selectedText()
-        indent = event.key() == Qt.Key_Tab
         modifiers = event.modifiers()
 
-        if (selection != '') and (modifiers != Qt.ControlModifier):
-            linesep = '\u2029'    # qt line ending
-            lines = selection.split(linesep)
+        if not modifiers & Qt.ControlModifier:
+            cursor = self.textCursor()
+            selection = cursor.selectedText()
+            indent = event.key() == Qt.Key_Tab
 
-            if indent:
-                newtext = linesep.join([self.tabChar + i for i in lines])
+            if selection != '':
+                linesep = '\u2029'    # qt line ending
+                lines = selection.split(linesep)
+
+                if indent:
+                    newtext = linesep.join([self.tabChar + i for i in lines])
+                else:
+                    newtext = linesep.join([i.replace(self.tabChar, '', 1) for i in lines])
+
+                cursor.insertText(newtext)
+                pos = cursor.position()
+                cursor.setPosition(pos - len(newtext), QTextCursor.KeepAnchor)
+                self.setTextCursor(cursor)
             else:
-                newtext = linesep.join([i.replace(self.tabChar, '', 1) for i in lines])
-
-            cursor.insertText(newtext)
-            pos = cursor.position()
-            cursor.setPosition(pos - len(newtext), QTextCursor.KeepAnchor)
-            self.setTextCursor(cursor)
+                cursor.insertText(self.tabChar)
         else:
-            cursor.insertText(self.tabChar)
-            # super().keyPressEvent(event)
+            super().keyPressEvent(event)
 
     def handle_Return(self, event):
         cursor = self.textCursor()
