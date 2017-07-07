@@ -45,6 +45,7 @@ class PaperEditor(QTextEdit):
         self.setAcceptRichText(False)
         self.dirty = False
         self.highlighter = MarkdownHighlighter(self.document())
+        self.tabChar = 4 * ' '
 
     def setFont(self, font):
         self.setCurrentFont(font)
@@ -63,6 +64,8 @@ class PaperEditor(QTextEdit):
             self.handle_indentSelection(event)
         elif event.key() == Qt.Key_Return:
             self.handle_Return(event)
+        elif event.key() == Qt.Key_Backspace:
+            self.handle_Backspace(event)
         else:
             super().keyPressEvent(event)
 
@@ -77,16 +80,17 @@ class PaperEditor(QTextEdit):
             lines = selection.split(linesep)
 
             if indent:
-                newtext = linesep.join(['\t' + i for i in lines])
+                newtext = linesep.join([self.tabChar + i for i in lines])
             else:
-                newtext = linesep.join([i.replace('\t', '', 1) for i in lines])
+                newtext = linesep.join([i.replace(self.tabChar, '', 1) for i in lines])
 
             cursor.insertText(newtext)
             pos = cursor.position()
             cursor.setPosition(pos - len(newtext), QTextCursor.KeepAnchor)
             self.setTextCursor(cursor)
         else:
-            super().keyPressEvent(event)
+            cursor.insertText(self.tabChar)
+            # super().keyPressEvent(event)
 
     def handle_Return(self, event):
         cursor = self.textCursor()
@@ -108,3 +112,19 @@ class PaperEditor(QTextEdit):
             cursor.insertText(mstr)
         else:
             super().keyPressEvent(event)
+
+    def handle_Backspace(self, event):
+        cursor = self.textCursor()
+        if not cursor.hasSelection():
+            tblen = len(self.tabChar)
+            pos = cursor.position()
+            cursor.setPosition(pos - tblen, QTextCursor.KeepAnchor)
+            txt = cursor.selectedText()
+            if txt == self.tabChar:
+                cursor.removeSelectedText()
+            else:
+                cursor.setPosition(pos)
+                super().keyPressEvent(event)
+        else:
+            super().keyPressEvent(event)
+
