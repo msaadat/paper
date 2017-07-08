@@ -2,8 +2,8 @@ import sys
 import os
 
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import QEvent
-from PyQt5.QtGui import QIcon, QKeySequence, QColor, QFont
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtGui import QIcon, QKeySequence, QColor, QFont, QPixmap
 
 from papers import Papers
 from config import PaperConfig
@@ -18,16 +18,15 @@ class PaperWindow(QMainWindow):
 
         self.config = PaperConfig()
         self.papers = Papers(self.config['Paper']['PapersPath'])
+        self.locked = True
 
         self.initUI()
 
-        self.getPassword()
-        self.loadPapers()
-        self.setFont()
+        self.toggleLock()
 
     def initUI(self):
         self.main_widget = QWidget()
-        self.vbox = QVBoxLayout()
+        self.screen_stack = QStackedWidget(self)
 
         self.resize(self.config['Paper'].getint('Width'),
                     self.config['Paper'].getint('Height'))
@@ -35,7 +34,7 @@ class PaperWindow(QMainWindow):
                   self.config['Paper'].getint('WindowY'))
 
         self.setWindowTitle('Paper')
-        self.setWindowIcon(QIcon('paper.png'))
+        self.setWindowIcon(QIcon('icons/paper.png'))
 
         # hack to set correct icon in windows taskbar
         if os.name == 'nt':
@@ -43,22 +42,9 @@ class PaperWindow(QMainWindow):
             myappid = 'msaadat.paper'
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
-        save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
-        save_shortcut.activated.connect(self.save_paper)
 
-        new_shortcut = QShortcut(QKeySequence("Ctrl+N"), self)
-        new_shortcut.activated.connect(self.add_paper_handler)
 
-        delete_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
-        delete_shortcut.activated.connect(self.delete_paper_active)
-
-        eval_shortcut = QShortcut(QKeySequence("Ctrl+E"), self)
-        eval_shortcut.activated.connect(self.evalText)
-
-        quit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
-        quit_shortcut.activated.connect(self.close)
-
-        self.tab_bar = QTabWidget()
+        self.tab_bar = QTabWidget(self.screen_stack)
         self.tab_bar.setTabsClosable(True)
         self.tab_bar.tabCloseRequested.connect(self.delete_paper)
         self.tab_bar.tabBarDoubleClicked.connect(self.rename_paper)
@@ -82,12 +68,17 @@ class PaperWindow(QMainWindow):
         font.setBold(True)
         self.menuBtn.setFont(font)
 
+        self.lock_action = QAction("Lock", self)
+        # self.lock_action.setShortcuts(QKeySequence("Ctrl+L"))
+        self.lock_action.triggered.connect(self.toggleLock)
+
         font_action = QAction("Font...", self)
         font_action.triggered.connect(self.getFont)
 
         self.menuBtnmenu = QMenu(self.menuBtn)
         self.menuBtnmenu.installEventFilter(self)
 
+        self.menuBtnmenu.addAction(self.lock_action)
         self.menuBtnmenu.addAction(font_action)
         self.menuBtn.setMenu(self.menuBtnmenu)
         self.menuBtn.setPopupMode(QToolButton.InstantPopup)
@@ -99,7 +90,17 @@ class PaperWindow(QMainWindow):
 
         self.tab_bar.setCornerWidget(self.hboxContainer)
 
-        self.setCentralWidget(self.tab_bar)
+        self.unlock_pixmap = QPixmap()
+        self.unlock_pixmap.load("icons/unlock.png")
+        self.lock_screen = QLabel(self.screen_stack)
+        self.lock_screen.setPixmap(self.unlock_pixmap)
+        self.lock_screen.setAlignment(Qt.AlignCenter)
+        self.lock_screen.installEventFilter(self)
+
+        self.screen_stack.insertWidget(0, self.lock_screen)
+        self.screen_stack.insertWidget(1, self.tab_bar)
+
+        self.setCentralWidget(self.screen_stack)
         self.setStyleSheet("""
                 QTabBar::tab {
                     padding: 3px;
@@ -117,7 +118,38 @@ class PaperWindow(QMainWindow):
                 QToolButton::menu-indicator { image: none; }
                 """)
 
+        # main window shortcuts
+        lock_shortcut = QShortcut(QKeySequence("Ctrl+L"), self)
+        lock_shortcut.activated.connect(self.toggleLock)
+
+        quit_shortcut = QShortcut(QKeySequence("Ctrl+Q"), self)
+        quit_shortcut.activated.connect(self.close)
+
+        # editor shortcuts
+        save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self.tab_bar)
+        save_shortcut.activated.connect(self.save_paper)
+
+        new_shortcut = QShortcut(QKeySequence("Ctrl+N"), self.tab_bar)
+        new_shortcut.activated.connect(self.add_paper_handler)
+
+        delete_shortcut = QShortcut(QKeySequence("Ctrl+W"), self.tab_bar)
+        delete_shortcut.activated.connect(self.delete_paper_active)
+
+        eval_shortcut = QShortcut(QKeySequence("Ctrl+E"), self.tab_bar)
+        eval_shortcut.activated.connect(self.evalText)
+
         self.show()
+
+    def toggleLock(self):
+        if self.locked:
+            if self.getPassword():
+                self.loadPapers()
+                self.screen_stack.setCurrentWidget(self.tab_bar)
+                self.locked = False
+        else:
+            if self.closeEditors():
+                self.screen_stack.setCurrentWidget(self.lock_screen)
+                self.locked = True
 
     def getFont(self, event):
         prevfont = QFont()
@@ -147,6 +179,8 @@ class PaperWindow(QMainWindow):
             geo = self.menuBtn.geometry()
             obj.move(pos.x() + geo.width() - obj.geometry().width(), pos.y())
             return True
+        elif event.type() == QEvent.MouseButtonPress and obj == self.lock_screen:
+            self.toggleLock()
         return False
 
     def loadPapers(self):
@@ -184,6 +218,8 @@ class PaperWindow(QMainWindow):
             cursor.setPosition(last_pos)
             self.tab_bar.currentWidget().setTextCursor(cursor)
 
+        self.setFont()
+
     def getPassword(self):
         if not self.papers.salt_path.exists():
             pwd, response = PasswordDialog.getPassword(self)
@@ -193,8 +229,10 @@ class PaperWindow(QMainWindow):
                                                   QLineEdit.Password, "")
         if response == QDialog.Accepted and pwd != '':
             self.papers.setPassword(pwd)
+            return True
         else:
-            self.close()
+            return False
+        #     self.close()
 
     def evalText(self):
         editor = self.tab_bar.currentWidget()
@@ -211,7 +249,7 @@ class PaperWindow(QMainWindow):
                 cursor.insertText(str(result))
         editor.setTextCursor(cursor)
 
-    def closeEvent(self, event):
+    def closeEditors(self):
         # check for unsaved papers
         unsaved = []
         for i in range(self.tab_bar.count()):
@@ -222,7 +260,7 @@ class PaperWindow(QMainWindow):
 
         if unsaved:
             reply = QMessageBox.question(self, "Unsaved Papers",
-                                         "Papers contain unsaved changes. Save all before exiting?",
+                                         "Papers contain unsaved changes. Save all before closing?",
                                          QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
                                          QMessageBox.Cancel)
             if reply == QMessageBox.Yes:
@@ -230,8 +268,7 @@ class PaperWindow(QMainWindow):
                     self.papers[i].text = j.toPlainText()
                     self.papers.save_paper(i)
             if reply == QMessageBox.Cancel:
-                event.ignore()
-                return
+                return False
 
         # save last paper & cursor pos
         widget = self.tab_bar.currentWidget()
@@ -247,8 +284,18 @@ class PaperWindow(QMainWindow):
         self.config['Paper']['WindowY'] = str(self.pos().y())
 
         self.config.SaveConfig()
-        event.accept()
-        sys.exit()
+
+        # reset papers and remove all tabs
+        self.papers = Papers(self.config['Paper']['PapersPath'])
+        for i in range(self.tab_bar.count()):
+            self.tab_bar.removeTab(0)
+
+        return True
+
+    def closeEvent(self, event):
+        if self.closeEditors():
+            event.accept()
+            sys.exit()
 
     def add_paper_handler(self):
         name, okPressed = QInputDialog.getText(self, "New Paper",
