@@ -48,8 +48,7 @@ class PaperEditor(QTextEdit):
         self.tabChar = 4 * ' '
 
     def setFont(self, font):
-        self.setCurrentFont(font)
-        self.document().setDefaultFont(self.currentFont())
+        super().setFont(font)
 
         # block signals as highlighter somehow sends textChanged signal
         self.blockSignals(True)
