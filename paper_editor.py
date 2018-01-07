@@ -1,9 +1,19 @@
 import re
+import webbrowser
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QTextCursor, QSyntaxHighlighter, QTextCharFormat, QFont
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtGui import QTextCursor, QSyntaxHighlighter, QTextCharFormat, QFont, QBrush
 from PyQt5.QtWidgets import QTextEdit
 
+regex = {
+'heading':'^(#+)\\s*(.+?)$',
+'italic':'\\B\\*{1}(.+?)\\*{1}\\B',
+'bold':'\\B\\*{2}(.+?)\\*{2}\\B',
+'strike': '\B\~{2}(.+?)\~{2}\B',
+'empty_list':'^\\s*[+\\-\\*]\\s*$',
+'list':'^(\\s*)([+\\-\\*])(\\s?)',
+'url':'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+}
 
 class MarkdownHighlighter(QSyntaxHighlighter):
 
@@ -17,19 +27,25 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         defaultSize = self.parent().defaultFont().pointSize()
         headingFormat.setFontPointSize(defaultSize * 1.3)
         headingFormat.setFontWeight(QFont.Bold)
-        self.highlightingRules.append(("^(#+)\\s*(.+?)$", headingFormat))
+        self.highlightingRules.append((regex['heading'], headingFormat))
 
         italicFormat = QTextCharFormat()
         italicFormat.setFontItalic(True)
-        self.highlightingRules.append(("\\B\\*{1}(.+?)\\*{1}\\B", italicFormat))
+        self.highlightingRules.append((regex['italic'], italicFormat))
 
         boldFormat = QTextCharFormat()
         boldFormat.setFontWeight(QFont.Bold)
-        self.highlightingRules.append(("\\B\\*{2}(.+?)\\*{2}\\B", boldFormat))
+        self.highlightingRules.append((regex['bold'], boldFormat))
 
         strikeFormat = QTextCharFormat()
         strikeFormat.setFontStrikeOut(True)
-        self.highlightingRules.append(("\B\~{2}(.+?)\~{2}\B", strikeFormat))
+        self.highlightingRules.append((regex['strike'], strikeFormat))
+
+        urlFormat = QTextCharFormat()
+        urlFormat.setFontUnderline(True)
+        urlFormat.setForeground(QBrush(Qt.blue))
+        self.highlightingRules.append((regex['url'], urlFormat))
+
         self.rehighlight()
 
     def highlightBlock(self, text):
@@ -46,6 +62,8 @@ class PaperEditor(QTextEdit):
         self.dirty = False
         self.highlighter = MarkdownHighlighter(self.document())
         self.tabChar = 4 * ' '
+        self.installEventFilter(self)
+        self.viewport().installEventFilter(self)
 
     def setFont(self, font):
         super().setFont(font)
@@ -57,6 +75,13 @@ class PaperEditor(QTextEdit):
 
     def setDirty(self, status=True):
         self.dirty = status
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.MouseButtonPress and \
+        event.button() == Qt.LeftButton and \
+        event.modifiers() & Qt.ControlModifier:
+            self.handle_linkOpen(event)
+        return False
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Tab or event.key() == Qt.Key_Backtab:
@@ -101,13 +126,13 @@ class PaperEditor(QTextEdit):
         line = cursor.selectedText()
 
         # delete empty list
-        m = re.match("^\\s*[+\\-\\*]\\s*$", line)
+        m = re.match(regex['empty_list'], line)
         if m:
             cursor.removeSelectedText()
             return
 
         # continue list
-        m = re.match("^(\\s*)([+\\-\\*])(\\s?)", line)
+        m = re.match(regex['list'], line)
         if m:
             mstr = '\n' + line[m.start():m.end()]
             cursor.setPosition(pos)
@@ -129,4 +154,15 @@ class PaperEditor(QTextEdit):
                 super().keyPressEvent(event)
         else:
             super().keyPressEvent(event)
+
+    def handle_linkOpen(self, event):
+        cursor = self.textCursor()
+        pos = cursor.position()
+        cursor.movePosition(QTextCursor.StartOfBlock)
+        cursor.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+        text = cursor.selectedText()
+        m = re.match(regex['url'], text)
+        if m:
+            webbrowser.open(m)
+
 
