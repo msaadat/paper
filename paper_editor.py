@@ -163,6 +163,6 @@ class PaperEditor(QTextEdit):
         text = cursor.selectedText()
         m = re.match(regex['url'], text)
         if m:
-            webbrowser.open(m)
+            webbrowser.open(m.group(0))
 
 
