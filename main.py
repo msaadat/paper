@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QIcon, QKeySequence, QColor, QFont, QPixmap
 
-from papers import Papers
+from papers import PapersStore
 from config import PaperConfig
 from paper_editor import PaperEditor
 from password_dlg import PasswordDialog
@@ -17,7 +17,7 @@ class PaperWindow(QMainWindow):
         super().__init__()
 
         self.config = PaperConfig()
-        self.papers = Papers(self.config['Paper']['PapersPath'])
+        self.papers = PapersStore(self.config['Paper']['PapersPath'])
         self.locked = True
 
         self.initUI()
@@ -184,18 +184,15 @@ class PaperWindow(QMainWindow):
         return False
 
     def loadPapers(self):
-        while True:
-            try:
-                self.papers.load_papers()
-                break
-            except ValueError as e:
-                QMessageBox.warning(self, "Error",
-                                    e.args[0])
-                self.getPassword()
-                continue
+        try:
+            self.papers.loadPapers()
+        except ValueError as e:
+            QMessageBox.warning(self, "Error",
+                                e.args[0])
+            return
 
         if not self.papers:
-            self.papers.add_paper("note")
+            self.papers.addPaper("note")
             self.papers["note"].text = "##My note"
 
         for i in self.papers:
@@ -221,18 +218,25 @@ class PaperWindow(QMainWindow):
         self.setFont()
 
     def getPassword(self):
-        if not self.papers.salt_path.exists():
+        if not self.papers.pw_check_path.exists():
             pwd, response = PasswordDialog.getPassword(self)
+            if response == QDialog.Accepted and pwd != '':
+                self.papers.changePassword(pwd)
+                return True
+            else:
+                return False
         else:
             pwd, response = QInputDialog.getText(self, "Password",
-                                                  "Input pasword:",
-                                                  QLineEdit.Password, "")
-        if response == QDialog.Accepted and pwd != '':
-            self.papers.setPassword(pwd)
-            return True
-        else:
-            return False
-        #     self.close()
+                                              "Input pasword:",
+                                                      QLineEdit.Password, "")
+            if response == QDialog.Accepted and pwd != '':
+                if self.papers.setPassword(pwd):
+                    return True
+                else:
+                    QMessageBox.warning(self, "Error", "Invalid Password")
+                    return False
+            else:
+                return False
 
     def evalText(self):
         editor = self.tab_bar.currentWidget()
@@ -266,7 +270,7 @@ class PaperWindow(QMainWindow):
             if reply == QMessageBox.Yes:
                 for i, j in unsaved:
                     self.papers[i].text = j.toPlainText()
-                    self.papers.save_paper(i)
+                    self.papers.savePaper(i)
             if reply == QMessageBox.Cancel:
                 return False
 
@@ -286,7 +290,7 @@ class PaperWindow(QMainWindow):
         self.config.SaveConfig()
 
         # reset papers and remove all tabs
-        self.papers = Papers(self.config['Paper']['PapersPath'])
+        self.papers = PapersStore(self.config['Paper']['PapersPath'])
         for i in range(self.tab_bar.count()):
             self.tab_bar.removeTab(0)
 
@@ -302,8 +306,7 @@ class PaperWindow(QMainWindow):
                                                "Paper name:", QLineEdit.Normal,
                                                "")
         if okPressed and name != '':
-            if not self.papers.paper_exists(name):
-                self.papers.add_paper(name)
+            if self.papers.addPaper(name):
                 self.add_paper(name)
             else:
                 QMessageBox.information(self, name, "Paper already exists.")
@@ -326,7 +329,7 @@ class PaperWindow(QMainWindow):
                                      QMessageBox.Yes | QMessageBox.No,
                                      QMessageBox.No)
         if reply == QMessageBox.Yes:
-            self.papers.delete_paper(name)
+            self.papers.deletePaper(name)
             self.tab_bar.removeTab(index)
 
     def save_paper(self):
@@ -334,7 +337,7 @@ class PaperWindow(QMainWindow):
         index = self.tab_bar.currentIndex()
         name = self.tab_bar.tabText(index)
         self.papers[name].text = textbox.toPlainText()
-        self.papers.save_paper(name)
+        self.papers.savePaper(name)
         textbox.setDirty(False)
         self.set_dirty(False)
 
@@ -353,8 +356,7 @@ class PaperWindow(QMainWindow):
                                                  "Paper name:",
                                                  QLineEdit.Normal, "")
         if okPressed and rename != '':
-            if not self.papers.paper_exists(rename):
-                self.papers.rename_paper(name, rename)
+            if self.papers.renamePaper(name, rename):
                 self.tab_bar.setTabText(index, rename)
             else:
                 QMessageBox.information(self, rename, "Paper already exists.")
