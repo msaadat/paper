@@ -56,6 +56,7 @@ class MarkdownHighlighter(QSyntaxHighlighter):
 
 
 class PaperEditor(QTextEdit):
+
     def __init__(self):
         super().__init__()
         self.setAcceptRichText(False)
@@ -90,6 +91,9 @@ class PaperEditor(QTextEdit):
             self.handle_Return(event)
         elif event.key() == Qt.Key_Backspace:
             self.handle_Backspace(event)
+        elif (event.key() == Qt.Key_J or event.key() == Qt.Key_K) \
+        and event.modifiers() & Qt.ControlModifier and event.modifiers() & Qt.ShiftModifier:
+            self.handle_lineMove(event.key() == Qt.Key_J)
         else:
             super().keyPressEvent(event)
 
@@ -165,4 +169,40 @@ class PaperEditor(QTextEdit):
         if m:
             webbrowser.open(m.group(0))
 
+    def handle_lineMove(self, move_down=True):
+        cursor = self.textCursor()
 
+        # return if at corner
+        if move_down:
+            cursor.movePosition(QTextCursor.EndOfLine)
+        else:
+            cursor.movePosition(QTextCursor.StartOfLine)
+        if cursor.atEnd() or cursor.atStart():
+            return
+
+        cursor = self.textCursor()
+        pos0 = cursor.position()
+        cursor.movePosition(QTextCursor.StartOfLine)
+
+        line_pos = pos0 - cursor.position()
+
+        cursor.select(QTextCursor.LineUnderCursor)
+        current_line = cursor.selectedText()
+        cursor.removeSelectedText()
+
+        move_op = QTextCursor.Down if move_down else QTextCursor.Up
+        cursor.movePosition(move_op)
+
+        cursor.select(QTextCursor.LineUnderCursor)
+        swap_line = cursor.selectedText()
+        cursor.removeSelectedText()
+
+        cursor.insertText(current_line)
+        cursor = self.textCursor()
+        cursor.insertText(swap_line)
+
+        # move cursor back to original line
+        cursor.movePosition(QTextCursor.StartOfLine)
+        cursor.movePosition(move_op)
+        cursor.setPosition(line_pos + cursor.position())
+        self.setTextCursor(cursor)
