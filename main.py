@@ -10,6 +10,8 @@ from config import PaperConfig
 from paper_editor import PaperEditor
 from password_dlg import PasswordDialog
 
+import qdarkstyle
+
 
 class PaperWindow(QMainWindow):
 
@@ -365,5 +367,6 @@ class PaperWindow(QMainWindow):
 if __name__ == '__main__':
 
     app = QApplication(sys.argv)
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
     p = PaperWindow()
     sys.exit(app.exec_())
