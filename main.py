@@ -105,16 +105,7 @@ class PaperWindow(QMainWindow):
         self.setCentralWidget(self.screen_stack)
         self.setStyleSheet("""
                 QTabBar::tab {
-                    padding: 3px;
-                    background-color: #cccccc;
-                    border-color: #9B9B9B;
-                    border: 1px solid #C4C4C3;
-                    border-bottom-color: #C2C7CB;
-                }
-                QTabBar::tab:selected {
-                    background-color: #eeeeee;
-                    border-color: #9B9B9B;
-                    border-bottom-color: #C2C7CB;
+                    padding:3px;
                 }
 
                 QToolButton::menu-indicator { image: none; }
